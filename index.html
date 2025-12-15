@@ -1767,7 +1767,7 @@ function closeVideoModal(){
     if (btnVideo){
       btnVideo.addEventListener('click', function(e){
         e.preventDefault(); e.stopPropagation();
-        var url = 'images/passeio_loteamento.mp4';
+        var url = 'images/1215.mp4';
         window.open(url, '_blank');
       });
     }
@@ -1986,12 +1986,53 @@ function closeVideoModal(){
     });
   }
 
+  function syncInfraOnCommercial(){
+    if (!window.map || !window.L || !window.layer_Comercial) return;
+
+    // Layers that belong to "Infraestrutura" group in this project
+    var infraLayers = [
+      window.layer_Terrenos_11,
+      window.layer_reaVerde_10,
+      window.layer_Ruas_9,
+      window.layer_readeEquipamentosPblicos_8,
+      window.layer_RemanescentedeVegetaoNativa_7,
+      window.layer_readeUsoPreservadodeVegetao_6,
+      window.layer_APP_5,
+      window.layer_VegetacaoAtual_4
+    ].filter(Boolean);
+
+    var prev = null;
+
+    window.map.on('overlayadd', function(e){
+      if (e && e.layer === window.layer_Comercial){
+        prev = {};
+        infraLayers.forEach(function(l){
+          var k = L.stamp(l);
+          prev[k] = window.map.hasLayer(l);
+          if (!prev[k]) window.map.addLayer(l);
+        });
+      }
+    });
+
+    window.map.on('overlayremove', function(e){
+      if (e && e.layer === window.layer_Comercial && prev){
+        infraLayers.forEach(function(l){
+          var k = L.stamp(l);
+          if (prev[k] === false && window.map.hasLayer(l)) window.map.removeLayer(l);
+        });
+        prev = null;
+      }
+    });
+  }
+
+
   ready(function(){
     setupDashboard();
     setupTitleAutoHide();
     fixLegendToggleLayout();
     waitForMap(function(){
       setupCommercialButtons();
+      syncInfraOnCommercial();
       setTimeout(fixLegendToggleLayout, 0);
     });
   });
