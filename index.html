@@ -193,15 +193,6 @@
             color: #fff;
         }
 
-
-        .lote-video-btn{
-            pointer-events: none; /* evita capturar pan/zoom fora do botão */
-        }
-        .lote-video-btn .lote-video-wrap{
-            pointer-events: auto;
-            transform: translate(-50%, -50%) scale(var(--loteBtnScale, 1));
-            transform-origin: center center;
-        }
         /* ===== Modal de vídeo (YouTube embed) ===== */
         #videoModal{
             position: fixed;
@@ -263,61 +254,80 @@
 </style>
 
 
-<style id="ecomap-mobile-fixes">
-/* Ensure map fills viewport even if some styles break */
-html, body, #map { height: 100%; width: 100%; margin: 0; padding: 0; }
-
-/* Legend always above logos + map controls */
-#legend-declividade { 
+<style id="ecomap-mobile-dashboard-css">
+/* Dashboard (canto inferior direito) */
+.ecomap-dashboard{
   position: fixed;
-  left: 10px;
-  bottom: 170px; /* above logos */
-  z-index: 3000;
-  max-width: 220px;
-}
-
-/* Make sure logos stay below legend */
-#logo-ecomap, #logo-novo-orlando, #logo-compass {
-  z-index: 1000;
-}
-
-/* Dashboard above attribution */
-#dashboard-ecom包含, #dashboard-ecomap, #dashboard-material {
+  right: 14px;
+  bottom: 14px;
   z-index: 2500;
-}
-
-/* Lot button scaling base */
-.lote-btn {
-  box-sizing: border-box;
-  width: 44px;
-  height: 44px;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(0,0,0,0.12);
   border-radius: 10px;
-  background: #fff;
-  border: 3px solid #2f80d1;
-  box-shadow: 0 1px 4px rgba(0,0,0,.25);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  line-height: 1.0;
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  color: #000;
-  user-select: none;
-  transform-origin: center center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  font-family: Arial, Helvetica, sans-serif;
 }
-.lote-btn .quadra { font-size: 16px; margin-bottom: 2px; }
-.lote-btn .lote { font-size: 14px; }
+.ecomap-dashboard .dash-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.10);
+  font-weight: 700;
+  font-size: 13px;
+}
+.ecomap-dashboard .dash-toggle{
+  cursor:pointer;
+  border: 0;
+  background: #f3f4f6;
+  border-radius: 6px;
+  width: 28px; height: 24px;
+  font-weight: 700;
+}
+.ecomap-dashboard .dash-body{ padding: 10px; }
+.ecomap-dashboard .dash-btn{
+  display:block;
+  width:100%;
+  padding: 10px 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  background: #253649;
+  color: #fff;
+}
+.ecomap-dashboard .dash-btn.secondary{ background:#1f2d3d; }
+.ecomap-dashboard .dash-btn:active{ transform: translateY(1px); }
+.ecomap-dashboard.collapsed .dash-body{ display:none; }
 
-/* sizes by zoom class */
-.lote-zoom-low .lote-btn { transform: scale(0.60); }
-.lote-zoom-mid .lote-btn { transform: scale(0.80); }
-.lote-zoom-high .lote-btn { transform: scale(1.00); }
+/* Ajuste para não colidir com atribuição (qgis2web/Leaflet) */
+.leaflet-control-attribution{ max-width: 55vw; }
 
-/* Mobile adjustments */
-@media (max-width: 768px) {
-  #legend-declividade { bottom: 210px; max-width: 180px; }
-  .lote-btn { width: 42px; height: 42px; }
+/* Legenda declividade acima das logos */
+#legend-declividade{
+  position: fixed;
+  left: 14px;
+  bottom: 190px; /* acima das logos */
+  z-index: 2400;
+}
+#legend-declividade .legend-header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+#legend-declividade .legend-toggle{
+  cursor:pointer;
+  border: 0;
+  background: #f3f4f6;
+  border-radius: 6px;
+  width: 28px; height: 24px;
+  font-weight: 700;
+}
+@media (max-width: 768px){
+  #legend-declividade{ bottom: 210px; left: 10px; }
+  .ecomap-dashboard{ right: 10px; bottom: 10px; width: 250px; }
 }
 </style>
 
@@ -1244,150 +1254,30 @@ function closeVideoModal(){
             style: style_Terrenos_11_0,
         });
         bounds_group.addLayer(layer_Terrenos_11);
-        // ===== COMERCIAL: botão de vídeo no centro de CADA lote (Terrenos) =====
-        // Como alimentar links por lote:
-        // 1) Preencha o dicionário abaixo (chave = id/Name do lote, valor = URL /embed/ do YouTube)
-        //    Ex.: loteVideoById["A-12"] = "https://www.youtube.com/embed/SEU_ID";
-        // 2) Se não houver link para um lote específico, cai no VIDEO_PADRAO.
-        var VIDEO_PADRAO = VIDEO_TESTE;
-
-        // Ajustes de visibilidade/tamanho (evita poluição quando o zoom está muito aberto)
-        var LOTE_BTN_MIN_ZOOM = 16;   // abaixo disso, esconde os botões (ajustado para uso real)
-        var LOTE_BTN_ZOOM_REF = 20;   // zoom onde o botão fica "normal"
-        var LOTE_BTN_SCALE_MIN = 0.70;
-        var LOTE_BTN_SCALE_MAX = 1.25;
-
-        var loteVideoById = {}; // <<< PREENCHA AQUI
-
-        var comercialVideoMarkers = [];
-        var comercialMarkersCriados = false;
-
-        function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-
-        function getLoteKey(props){
-            if(!props) return null;
-            // Prioriza campos mais comuns (ajuste conforme seu GeoJSON)
-            if(props['id'] !== undefined && props['id'] !== null) return props['id'];
-            if(props['ID'] !== undefined && props['ID'] !== null) return props['ID'];
-            if(props['Name'] !== undefined && props['Name'] !== null) return props['Name'];
-            if(props['nome'] !== undefined && props['nome'] !== null) return props['nome'];
-            if(props['lote'] !== undefined && props['lote'] !== null) return props['lote'];
-            if(props['LOTE'] !== undefined && props['LOTE'] !== null) return props['LOTE'];
-            return null;
-        }
-
-        function getVideoUrlForLote(props){
-            var key = getLoteKey(props);
-            if(key !== null && loteVideoById[String(key)]) return loteVideoById[String(key)];
-            return VIDEO_PADRAO;
-        }
-
-        function getTitleForLote(props){
-            var key = getLoteKey(props);
-            if(key === null) return "Vista do lote";
-            return "Vista do lote " + String(key);
-        }
-
-        function setLoteButtonsScale(){
-            var z = map.getZoom();
-            // Escala suave em torno do zoom de referência
-            var scale = 1 + (z - LOTE_BTN_ZOOM_REF) * 0.08; // 0.08 = sensibilidade
-            scale = clamp(scale, LOTE_BTN_SCALE_MIN, LOTE_BTN_SCALE_MAX);
-            map.getContainer().style.setProperty('--loteBtnScale', String(scale));
-        }
-
-        function setLoteButtonsVisibility(){
-            var z = map.getZoom();
-            var show = (z >= LOTE_BTN_MIN_ZOOM);
-            for(var i=0;i<comercialVideoMarkers.length;i++){
-                var m = comercialVideoMarkers[i];
-                if(!m) continue;
-                var el = m.getElement && m.getElement();
-                if(el) el.style.display = show ? 'block' : 'none';
-            }
-        }
-
-        function criarBotoesEmTodosOsLotes(){
-            if(comercialMarkersCriados) return;
-            comercialMarkersCriados = true;
-
+        // ===== COMERCIAL: botão de vídeo em um lote (teste) =====
+        (function criarBotaoComercialTeste(){
             try{
-                // Garante que a camada "Terrenos" está pronta
-                if(typeof layer_Terrenos_11 === 'undefined' || !layer_Terrenos_11.eachLayer) return;
-
-                layer_Terrenos_11.eachLayer(function(loteLayer){
-                    if(!loteLayer) return;
-
-                    // Centro do polígono
-                    var center = null;
-                    if(loteLayer.getCenter) center = loteLayer.getCenter();
-                    else if(loteLayer.getBounds) center = loteLayer.getBounds().getCenter();
-                    if(!center) return;
-
-                    var props = (loteLayer.feature && loteLayer.feature.properties) ? loteLayer.feature.properties : null;
-                    var videoUrl = getVideoUrlForLote(props);
-                    var titleTxt = getTitleForLote(props);
-
-                    var markerBtn = L.marker(center, {
-                        icon: L.divIcon({
-                            className: 'lote-video-btn',
-                            html:
-                                '<div class="lote-video-wrap">' +
-                                '<button type="button" data-url="' + String(videoUrl) + '" data-title="' + String(titleTxt).replace(/"/g,'&quot;') + '">' +
-                                '▶ Vídeo' +
-                                '</button>' +
-                                '</div>',
-                            iconSize: [0, 0] // o tamanho real é controlado pelo CSS
-                        }),
-                        interactive: true,
-                        keyboard: false
-                    });
-
-                    comercialVideoMarkers.push(markerBtn);
-                    layer_Comercial.addLayer(markerBtn);
+                var loteEscolhido = null;
+                layer_Terrenos_11.eachLayer(function(l){
+                    if(!loteEscolhido && l && l.getBounds) loteEscolhido = l;
                 });
+                if(!loteEscolhido) return;
 
-                // Aplicar estado inicial
-                setTimeout(function(){
-                    setLoteButtonsScale();
-                    setLoteButtonsVisibility();
-                }, 120);
-
+                var center = (loteEscolhido.getCenter ? loteEscolhido.getCenter() : loteEscolhido.getBounds().getCenter());
+                var markerBtn = L.marker(center, {
+                    icon: L.divIcon({
+                        className: 'lote-video-btn',
+                        html: '<button type="button" data-url="' + VIDEO_TESTE + '" data-title="Vista do lote (teste)">▶ Vídeo</button>',
+                        iconSize: [1, 1]
+                    }),
+                    interactive: true
+                });
+                layer_Comercial.addLayer(markerBtn);
             } catch(err){
-                console.warn("Comercial (botões por lote) falhou:", err);
+                // se algo falhar, não interrompe o mapa
+                console.warn("Comercial (teste) não foi criado:", err);
             }
-        }
-
-        // Cria os botões assim que a camada "Comercial" for ligada no menu
-        map.on('overlayadd', function(e){
-            if(e.layer === layer_Comercial){
-                criarBotoesEmTodosOsLotes();
-                setTimeout(function(){
-                    setLoteButtonsScale();
-                    setLoteButtonsVisibility();
-                }, 120);
-            }
-        });
-
-        map.on('overlayremove', function(e){
-            if(e.layer === layer_Comercial){
-                // mantém criado (para não recriar), apenas garante oculto se necessário
-                setTimeout(setLoteButtonsVisibility, 120);
-            }
-        });
-
-        map.on('zoomend', function(){
-            setLoteButtonsScale();
-            setLoteButtonsVisibility();
-        });
-
-        // Se abrir já com a camada Comercial ligada (raramente), cria também
-        try{
-            if(map.hasLayer(layer_Comercial)){
-                criarBotoesEmTodosOsLotes();
-            }
-        }catch(err){}
-;
+        })();
 
         function pop_DiagnsticoAmbientalCamposNovos_12(feature, layer) {
             var popupContent = '<table>\
@@ -1822,127 +1712,288 @@ function closeVideoModal(){
 
 </script>        
     
+<div id="ecomap-dashboard" class="ecomap-dashboard" aria-label="Material do Empreendimento">
+  <div class="dash-header">
+    <span>Material do Empreendimento</span>
+    <button id="dashToggleBtn" class="dash-toggle" type="button" aria-label="Minimizar dashboard">–</button>
+  </div>
+  <div class="dash-body">
+    <button id="btnLayoutUrbanistico" class="dash-btn" type="button">📄 Baixar Layout Urbanístico</button>
+    <button id="btnVideoPasseio" class="dash-btn secondary" type="button">🎥 Vídeo – Passeio pelo Loteamento</button>
+  </div>
+</div>
+
+
 <script id="ecomap-runtime-fixes">
 (function(){
-  // Defensive: avoid running before Leaflet map exists
-  function onReady(fn){
-    if (document.readyState === 'complete' || document.readyState === 'interactive') fn();
-    else document.addEventListener('DOMContentLoaded', fn);
+  function ready(fn){
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
   }
 
-  onReady(function(){
-    try{
-      // --- 1) Force opacity = 1 for key rasters and contours ---
-      var rasterVars = [
-        'layer_ortomosaico_15cm_1',
-        'layer_Declividade_15'
-      ];
-      rasterVars.forEach(function(v){
-        if (window[v] && typeof window[v].setOpacity === 'function'){
-          window[v].setOpacity(1);
-        }
-        // also ensure pane has full opacity if present
-        var paneName = (window[v] && window[v].options && window[v].options.pane) ? window[v].options.pane : null;
-        if (paneName && window.map && map.getPane(paneName)) {
-          map.getPane(paneName).style.opacity = '1';
-        }
+  function waitForMap(cb){
+    var t0 = Date.now();
+    (function tick(){
+      if (window.map && window.L) return cb();
+      if (Date.now()-t0 > 15000) return; // fail silently
+      setTimeout(tick, 60);
+    })();
+  }
+
+  function setupDashboard(){
+    var dash = document.getElementById('ecomap-dashboard');
+    if (!dash) return;
+
+    var toggle = document.getElementById('dashToggleBtn');
+    if (toggle){
+      toggle.addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var collapsed = dash.classList.toggle('collapsed');
+        toggle.textContent = collapsed ? '+' : '–';
+        toggle.setAttribute('aria-label', collapsed ? 'Expandir dashboard' : 'Minimizar dashboard');
       });
-
-      
-      // Also force pane opacity for known pane names (fallback)
-      try{
-        if (window.map && map.getPanes){
-          Object.keys(map.getPanes()).forEach(function(p){
-            if (/ortomosaico|declividade|curva/i.test(p)){
-              map.getPane(p).style.opacity = '1';
-            }
-          });
-        }
-      }catch(e){}
-
-      // Curvas de nível (vector) - try common variable names
-      ['layer_CurvadeNvel_16','layer_CurvasdeNvel_16','layer_CurvadeNivel_16'].forEach(function(v){
-        if (window[v] && typeof window[v].setStyle === 'function'){
-          window[v].setStyle({opacity: 1, fillOpacity: 1});
-        }
-      });
-
-      // --- 2) Keep declividade legend above logos and make minimize work ---
-      var legend = document.getElementById('legend-declividade');
-      if (legend){
-        legend.style.zIndex = 3000;
-
-        // find/minimize button inside legend (created by earlier code)
-        var btn = legend.querySelector('.legend-toggle, .legend-minimize, button');
-        // if no button, create one
-        if (!btn){
-          btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'legend-toggle';
-          btn.textContent = '–';
-          btn.style.cssText = 'position:absolute;top:6px;right:6px;width:26px;height:22px;border:0;border-radius:6px;background:#fff;cursor:pointer;';
-          legend.style.position = legend.style.position || 'fixed';
-          legend.appendChild(btn);
-        }
-
-        // content wrapper
-        var content = legend.querySelector('.legend-content');
-        if (!content){
-          // wrap existing children except button
-          content = document.createElement('div');
-          content.className = 'legend-content';
-          // move nodes
-          Array.from(legend.childNodes).forEach(function(n){
-            if (n === btn) return;
-            content.appendChild(n);
-          });
-          legend.appendChild(content);
-          legend.insertBefore(btn, content);
-        }
-
-        var collapsed = false;
-        function setCollapsed(state){
-          collapsed = state;
-          if (collapsed){
-            content.style.display = 'none';
-            btn.textContent = '+';
-            legend.style.height = 'auto';
-            legend.style.paddingBottom = '8px';
-          }else{
-            content.style.display = '';
-            btn.textContent = '–';
-          }
-        }
-        // stop map click propagation
-        ['click','dblclick','mousedown','touchstart','pointerdown'].forEach(function(ev){
-          legend.addEventListener(ev, function(e){ e.stopPropagation(); }, {passive:false});
-        });
-        btn.addEventListener('click', function(e){
-          e.preventDefault(); e.stopPropagation();
-          setCollapsed(!collapsed);
-        });
-      }
-
-      // --- 3) Improve lot buttons visual scale on mobile/low zoom ---
-      // Attempt to find the "Vista do lote" markers layer variable (created earlier)
-          }catch(err){
-      console.error('ECOMAP runtime fixes error:', err);
     }
 
-    // Zoom-based CSS class for lot buttons (works even if we don't have direct layer reference)
-    try{
-      if (window.map && typeof map.on === 'function'){
-        function updateZoomClass(){
-          var z = map.getZoom();
-          document.body.classList.remove('lote-zoom-low','lote-zoom-mid','lote-zoom-high');
-          if (z <= 16) document.body.classList.add('lote-zoom-low');
-          else if (z <= 18) document.body.classList.add('lote-zoom-mid');
-          else document.body.classList.add('lote-zoom-high');
+    var btnPdf = document.getElementById('btnLayoutUrbanistico');
+    if (btnPdf){
+      btnPdf.addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var url = 'images/Layout Urbanístico.pdf';
+        window.open(url, '_blank');
+      });
+    }
+
+    var btnVideo = document.getElementById('btnVideoPasseio');
+    if (btnVideo){
+      btnVideo.addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var url = 'images/passeio_loteamento.mp4';
+        window.open(url, '_blank');
+      });
+    }
+  }
+
+  function setupTitleAutoHide(){
+    var title = document.getElementById('map-title');
+    if (!title) return;
+
+    function setHidden(hidden){
+      title.style.display = hidden ? 'none' : '';
+    }
+
+    function bind(){
+      var ctl = document.querySelector('.leaflet-control-layers');
+      if (!ctl) return false;
+
+      var obs = new MutationObserver(function(){
+        var expanded =
+          ctl.classList.contains('leaflet-control-layers-expanded') ||
+          ctl.classList.contains('leaflet-control-layers-open');
+        if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches){
+          setHidden(expanded);
         }
-        map.on('zoomend', updateZoomClass);
-        updateZoomClass();
+      });
+      obs.observe(ctl, {attributes:true, attributeFilter:['class']});
+
+      var toggle = ctl.querySelector('.leaflet-control-layers-toggle');
+      if (toggle){
+        toggle.addEventListener('click', function(){
+          setTimeout(function(){
+            var expanded = ctl.classList.contains('leaflet-control-layers-expanded') || ctl.classList.contains('leaflet-control-layers-open');
+            if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches){
+              setHidden(expanded);
+            }
+          }, 0);
+        }, true);
       }
-    }catch(e){}
+
+      setTimeout(function(){
+        if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches){
+          setHidden(ctl.classList.contains('leaflet-control-layers-expanded') || ctl.classList.contains('leaflet-control-layers-open'));
+        }
+      }, 0);
+
+      return true;
+    }
+
+    var tries = 0;
+    (function loop(){
+      tries++;
+      if (bind()) return;
+      if (tries > 160) return;
+      setTimeout(loop, 100);
+    })();
+  }
+
+  function fixLegendToggleLayout(){
+    var legend = document.getElementById('legend-declividade');
+    if (!legend) return;
+
+    var header = legend.querySelector('.legend-header');
+    var toggle = legend.querySelector('.legend-toggle');
+    if (!header){
+      header = document.createElement('div');
+      header.className = 'legend-header';
+
+      var titleSpan = document.createElement('span');
+      titleSpan.className = 'legend-title';
+      titleSpan.textContent = 'Declividade';
+
+      if (!toggle){
+        toggle = document.createElement('button');
+        toggle.className = 'legend-toggle';
+        toggle.type = 'button';
+        toggle.textContent = '–';
+        toggle.title = 'Minimizar';
+      }
+
+      header.appendChild(titleSpan);
+      header.appendChild(toggle);
+
+      var body = document.createElement('div');
+      body.className = 'legend-body';
+
+      var children = Array.prototype.slice.call(legend.childNodes);
+      children.forEach(function(n){ body.appendChild(n); });
+      legend.innerHTML = '';
+      legend.appendChild(header);
+      legend.appendChild(body);
+    }
+
+    var btn = legend.querySelector('.legend-toggle');
+    if (btn && !btn.dataset.bound){
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var collapsed = legend.dataset.collapsed === '1' ? false : true;
+        legend.dataset.collapsed = collapsed ? '1' : '0';
+
+        var body = legend.querySelector('.legend-body');
+        if (body){
+          body.style.display = collapsed ? 'none' : '';
+        }
+        btn.textContent = collapsed ? '+' : '–';
+      }, true);
+    }
+  }
+
+  function setupCommercialButtons(){
+    if (!window.L) return;
+    if (!window.layer_Comercial){
+      window.layer_Comercial = L.layerGroup();
+    }
+
+    function ensureCss(){
+      if (document.getElementById('ecomap-video-btn-css')) return;
+      var st = document.createElement('style');
+      st.id = 'ecomap-video-btn-css';
+      st.textContent =
+        ".ecomap-video-btn{background:#fff;border:2px solid #2b7bbb;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.20);padding:4px 6px;}"+
+        ".ecomap-video-btn div{font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#000;}"+
+        "@media (max-width:768px){.ecomap-video-btn div{font-size:13px;}}";
+      document.head.appendChild(st);
+    }
+
+    function discoverPointGeoJson(){
+      var keys = Object.keys(window);
+      for (var i=0;i<keys.length;i++){
+        var k = keys[i];
+        if (k.indexOf('json_') !== 0) continue;
+        var v = window[k];
+        if (!v || !v.features || !v.features.length) continue;
+        var f = v.features[0];
+        if (!f || !f.geometry || f.geometry.type !== 'Point') continue;
+        var props = f.properties || {};
+        if (props.id_lote || (props.quadra && props.lote) || props.Quadra || props.Lote) return v;
+      }
+      return null;
+    }
+
+    function buildButtonsFromGeojson(gj){
+      try{ window.layer_Comercial.clearLayers(); }catch(e){}
+      if (!gj || !gj.features) return;
+
+      function pad2(x){
+        x = String(x || '').trim();
+        if (x.length === 1) return '0' + x;
+        return x;
+      }
+
+      gj.features.forEach(function(ft){
+        if (!ft.geometry || ft.geometry.type !== 'Point') return;
+        var c = ft.geometry.coordinates;
+        if (!c || c.length < 2) return;
+        var lng = c[0], lat = c[1];
+        var p = ft.properties || {};
+        var quad = (p.quadra || p.Quadra || '').toString().trim();
+        var lot = (p.lote || p.Lote || '').toString().trim();
+        var id = (p.id_lote || p.id || p.ID || '').toString().trim();
+
+        var top = quad, bottom = pad2(lot);
+        if (id && (!quad || !lot)){
+          var m = id.match(/^([A-Za-z])\s*[-_ ]?\s*(\d+)/);
+          if (m){
+            top = m[1];
+            bottom = pad2(m[2]);
+          }else{
+            top = id;
+            bottom = '';
+          }
+        }
+
+        var html = '<div style="line-height:1.05; text-align:center;"><div style="font-weight:800;">'+(top||'')+'</div><div style="font-weight:800;">'+(bottom||'')+'</div></div>';
+        var icon = L.divIcon({ className:'ecomap-video-btn', html: html, iconSize:[42,42], iconAnchor:[21,21] });
+        var mk = L.marker([lat,lng], {icon: icon, interactive:true});
+        mk.on('click', function(){
+          var url = 'https://youtu.be/5iG9Fz3XerA';
+          window.open(url, '_blank');
+        });
+        window.layer_Comercial.addLayer(mk);
+      });
+    }
+
+    function tryLoadCandidates(done){
+      var candidates = [];
+      for (var i=1;i<=40;i++){
+        candidates.push('data/Identificacao_lotes_'+i+'.js');
+        candidates.push('data/Identificacaolotes_'+i+'.js');
+        candidates.push('data/Identificacao_lote_'+i+'.js');
+        candidates.push('data/IdentificacaoLotes_'+i+'.js');
+      }
+      var idx = 0;
+
+      function loadNext(){
+        if (idx >= candidates.length) return done(false);
+        var src = candidates[idx++];
+        var s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = function(){ done(true); };
+        s.onerror = function(){ loadNext(); };
+        document.body.appendChild(s);
+      }
+      loadNext();
+    }
+
+    ensureCss();
+
+    var gj = discoverPointGeoJson();
+    if (gj){ buildButtonsFromGeojson(gj); return; }
+
+    tryLoadCandidates(function(){
+      var gj2 = discoverPointGeoJson();
+      if (gj2) buildButtonsFromGeojson(gj2);
+    });
+  }
+
+  ready(function(){
+    setupDashboard();
+    setupTitleAutoHide();
+    fixLegendToggleLayout();
+    waitForMap(function(){
+      setupCommercialButtons();
+      setTimeout(fixLegendToggleLayout, 0);
+    });
   });
 })();
 </script>
