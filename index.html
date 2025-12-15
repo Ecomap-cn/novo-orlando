@@ -59,8 +59,8 @@
         #legend-declividade{
             position:absolute;
             left: 14px;
-            bottom: 160px;
-            z-index: 9999;
+            bottom: 200px;
+            z-index: 9998;
             background: rgba(255,255,255,0.95);
             border: 1px solid rgba(0,0,0,0.10);
             border-radius: 6px;
@@ -148,7 +148,7 @@
             }
             #legend-declividade{
                 left: 10px;
-                bottom: 120px;
+                bottom: 170px;
                 font-size: 11px;
                 padding: 7px 9px;
             }
@@ -1396,6 +1396,13 @@ locateControl.addTo(map);
                                               img_bounds_Declividade_15,
                                               {pane: 'pane_Declividade_15'});
         bounds_group.addLayer(layer_Declividade_15);
+        // Force Declividade fully opaque
+        try{
+            if (layer_Declividade_15 && typeof layer_Declividade_15.setOpacity === 'function') layer_Declividade_15.setOpacity(1.0);
+            var __pd = map.getPane && map.getPane('pane_Declividade_15');
+            if (__pd) __pd.style.opacity = '1';
+        }catch(e){}
+
         function pop_CurvadeNvel_16(feature, layer) {
             var popupContent = '<table>\
                     <tr>\
@@ -1754,7 +1761,7 @@ locateControl.addTo(map);
     })();
 
     // ============================================================
-    //  Force ortomosaico fully opaque (no transparency)
+    //  Force ortomosaico & declividade fully opaque (no transparency)
     // ============================================================
     (function(){
         try{
@@ -1765,6 +1772,13 @@ locateControl.addTo(map);
             }
             var __p = map.getPane && map.getPane('pane_ortomosaico_15cm_1');
             if (__p) { __p.style.opacity = '1'; }
+            try{
+                if (typeof layer_Declividade_15 !== 'undefined' && layer_Declividade_15 && typeof layer_Declividade_15.setOpacity === 'function') {
+                    layer_Declividade_15.setOpacity(1.0);
+                }
+                var __pd = map.getPane && map.getPane('pane_Declividade_15');
+                if (__pd) { __pd.style.opacity = '1'; }
+            } catch(e) {}
         } catch(e){}
     })();
 
@@ -1952,6 +1966,7 @@ var lay = L.control.layers.tree(null, overlaysTree,{
             var EXCEPT = new Set();
             if (typeof layer_reaMatrcula_17 !== 'undefined') EXCEPT.add(layer_reaMatrcula_17);
             if (typeof layer_Terrenos_11 !== 'undefined') EXCEPT.add(layer_Terrenos_11);
+            if (typeof layer_CurvadeNvel_16 !== 'undefined') EXCEPT.add(layer_CurvadeNvel_16);
 
             function collect(tree, out){
                 out = out || [];
@@ -2072,6 +2087,47 @@ document.addEventListener('DOMContentLoaded', function () {
     </a>
   </div>
 </div>
+
+
+<script>
+// ============================================================
+// MOBILE UX: hide the title when the Layers panel is expanded
+// ============================================================
+(function(){
+  function init(){
+    var title = document.getElementById('map-title');
+    var layersCtrl = document.querySelector('.leaflet-control-layers');
+    if(!title || !layersCtrl) return;
+
+    function update(){
+      var isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+      var expanded = layersCtrl.classList.contains('leaflet-control-layers-expanded');
+      if(isMobile && expanded){
+        title.style.display = 'none';
+      } else {
+        title.style.display = '';
+      }
+    }
+
+    // react to clicks and class changes
+    layersCtrl.addEventListener('click', function(){ setTimeout(update, 0); }, true);
+    window.addEventListener('resize', update);
+
+    try{
+      var mo = new MutationObserver(update);
+      mo.observe(layersCtrl, {attributes:true, attributeFilter:['class']});
+    }catch(e){}
+
+    update();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
 
 </body>
 </html>
