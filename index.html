@@ -59,8 +59,8 @@
         #legend-declividade{
             position:absolute;
             left: 14px;
-            bottom: 200px;
-            z-index: 9998;
+            bottom: 260px;
+            z-index: 10020;
             background: rgba(255,255,255,0.95);
             border: 1px solid rgba(0,0,0,0.10);
             border-radius: 6px;
@@ -359,6 +359,12 @@
   }
 
   /* Declividade legend: smaller and not too wide */
+  /* Declividade legend: keep above the stacked logos */
+  #legend-declividade{
+    bottom: 260px !important;
+    z-index: 10020 !important;
+  }
+
   #legend-declividade{
     max-width: 200px;
     font-size: 11px;
@@ -599,6 +605,15 @@ locateControl.addTo(map);
                                               {pane: 'pane_ortomosaico_15cm_1'});
         bounds_group.addLayer(layer_ortomosaico_15cm_1);
         map.addLayer(layer_ortomosaico_15cm_1);
+        // Force rasters fully opaque (defensive: some exports carry opacity)
+        function __forceRasterOpacity(){
+            try{ if (layer_ortomosaico_15cm_1 && typeof layer_ortomosaico_15cm_1.setOpacity==='function') layer_ortomosaico_15cm_1.setOpacity(1.0);}catch(e){}
+            try{ if (layer_Declividade_15 && typeof layer_Declividade_15.setOpacity==='function') layer_Declividade_15.setOpacity(1.0);}catch(e){}
+            try{ if (layer_CurvadeNvel_16 && typeof layer_CurvadeNvel_16.setStyle==='function') layer_CurvadeNvel_16.setStyle({opacity:1, fillOpacity:0}); }catch(e){}
+        }
+        setTimeout(__forceRasterOpacity, 300);
+        map.on('zoomend', function(){ setTimeout(__forceRasterOpacity, 0); });
+
         if (typeof layer_ortomosaico_15cm_1.setOpacity === 'function') { try { layer_ortomosaico_15cm_1.setOpacity(1.0); } catch(e){} }
         function pop_BaciaRioSantaCruz_2(feature, layer) {
             var popupContent = '<table>\
@@ -1664,10 +1679,11 @@ locateControl.addTo(map);
         }
 
         // Controle de escala e visibilidade por zoom
-        var VISTA_BTN_MIN_ZOOM = 16;      // a partir deste zoom começa a aparecer
-        var VISTA_BTN_ZOOM_REF = 18;      // zoom de referência
-        var VISTA_BTN_SCALE_MIN = 0.70;   // escala mínima
-        var VISTA_BTN_SCALE_MAX = 1.25;   // escala máxima
+        var __isMobile = (window.innerWidth || 0) <= 768;
+    var VISTA_BTN_MIN_ZOOM = __isMobile ? 15 : 16;      // a partir deste zoom começa a aparecer
+        var VISTA_BTN_ZOOM_REF = __isMobile ? 17 : 18;      // zoom de referência
+        var VISTA_BTN_SCALE_MIN = __isMobile ? 0.55 : 0.70;   // escala mínima
+        var VISTA_BTN_SCALE_MAX = __isMobile ? 1.05 : 1.25;   // escala máxima
 
         function updateVistaLoteButtons(){
             var z = map.getZoom();
@@ -1758,7 +1774,39 @@ locateControl.addTo(map);
                 __setLegend(false);
             }
         } catch(e){}
+    })()
+    // Legend minimize/maximize
+    (function(){
+        try{
+            var t = document.getElementById('legend-toggle');
+            var b = document.getElementById('legend-body');
+            var box = document.getElementById('legend-declividade');
+            if(!t || !b || !box) return;
+            var collapsed = false;
+            function apply(){
+                if(collapsed){
+                    b.style.display = 'none';
+                    t.textContent = '+';
+                    t.title = 'Expandir';
+                    box.classList.add('is-collapsed');
+                } else {
+                    b.style.display = 'block';
+                    t.textContent = '–';
+                    t.title = 'Minimizar';
+                    box.classList.remove('is-collapsed');
+                }
+            }
+            t.addEventListener('click', function(ev){
+                ev.preventDefault();
+                ev.stopPropagation();
+                collapsed = !collapsed;
+                apply();
+            });
+            // init
+            apply();
+        }catch(e){}
     })();
+;
 
     // ============================================================
     //  Force ortomosaico & declividade fully opaque (no transparency)
@@ -1791,7 +1839,8 @@ locateControl.addTo(map);
     //      Área Matrícula + ortomosaico + Google Hybrid (no buttons).
     // ============================================================
 
-        var __commercialSwitching = false;
+        var __forceRasterOpacity();
+            __commercialSwitching = false;
 
 // --- Helpers to collect layers from overlaysTree recursively
     function collectLayers(tree, out) {
@@ -1889,7 +1938,8 @@ locateControl.addTo(map);
                 setTimeout(updateVistaLoteButtons, 50);
             }
         } finally {
-            setTimeout(function(){ __commercialSwitching = false; }, 50);
+            setTimeout(function(){ __forceRasterOpacity();
+            __commercialSwitching = false; }, 50);
         }
     }
 
@@ -1925,7 +1975,8 @@ locateControl.addTo(map);
             }
         } finally {
             // release lock shortly after layer ops settle
-            setTimeout(function(){ __commercialSwitching = false; }, 50);
+            setTimeout(function(){ __forceRasterOpacity();
+            __commercialSwitching = false; }, 50);
         }
     }
 
